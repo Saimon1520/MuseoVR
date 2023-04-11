@@ -10,12 +10,20 @@ let environmentProxy = null;
 
 renderer.setSize(window.innerWidth, innerHeight);
 
-const camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 1, 1000);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+const size = 100;
+const divisions = 10;
+const color1 = 0x000000;  // negro
+const color2 = 0xffffff;  // blanco
+
+const gridHelper = new THREE.GridHelper(size, divisions, color1, color2);
+scene.add(gridHelper);
 
 document.body.appendChild(renderer.domElement);
 
 
-camera.position.set( -3, 30, 125 );
+
 
 let lightCount = 6;
 let lightDistance = 3000;
@@ -69,12 +77,10 @@ gltfLoader.load('../assets/glb/WholeMuseum.glb', (gltf) => {
 	});
 });
 
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
+let movement = {moveForward: false, moveBackward: false, moveLeft: false, moveRight: false};
 
-const moveSpeed = 1;
+
+let moveSpeed = 1;
 
 document.addEventListener('keydown', onKeyDown, false);
 document.addEventListener('keyup', onKeyUp, false);
@@ -82,52 +88,72 @@ document.addEventListener('keyup', onKeyUp, false);
 function onKeyDown(event) {
     switch (event.keyCode) {
         case 87: // w
-            moveForward = true;
+			movement.moveForward=true;
             break;
         case 65: // a
-            moveRight = true;
+			movement.moveRight = true;
             break;
         case 83: // s
-            moveBackward = true;
+			movement.moveBackward = true;
             break;
         case 68: // d
-            moveLeft = true;
+			movement.moveLeft = true;
             break;
+
     }
 }
 
 function onKeyUp(event) {
     switch(event.keyCode) {
         case 87: // w
-            moveForward = false;
+			movement.moveForward = false;
             break;
         case 65: // a
-            moveRight = false;
+			movement.moveRight = false;
             break;
         case 83: // s
-            moveBackward = false;
+			movement.moveBackward = false;
             break;
         case 68: // d
-            moveLeft = false;
+			movement.moveLeft = false;
             break;
     }
 }
 
+function checkeys() {
+	let checker = false;
+	let remain = false;
+	Object.keys(movement).forEach(function(key){
+		
+		if(!movement[key] && !remain || movement[key] && !remain ){
+			remain = movement[key];
+		} else if (movement[key] && remain) {
+			checker = true;
+		}
+	});
+	if(checker){
+		moveSpeed = 0.45;
+	} else {
+		moveSpeed = 1;
+	}
+}
+
 function updatePosition() {
 	if(isCursorLocked){
-    if (moveForward) {
+		checkeys();
+    if (movement.moveForward) {
         camera.position.x -= moveSpeed * Math.sin(camera.rotation.y);
         camera.position.z -= moveSpeed * Math.cos(camera.rotation.y);
     }
-    if (moveBackward) {
+    if (movement.moveBackward) {
         camera.position.x += moveSpeed * Math.sin(camera.rotation.y);
         camera.position.z += moveSpeed * Math.cos(camera.rotation.y);
     }
-    if (moveLeft) {
+    if (movement.moveLeft) {
         camera.position.x -= moveSpeed * Math.sin(camera.rotation.y - Math.PI/2);
         camera.position.z -= moveSpeed * Math.cos(camera.rotation.y - Math.PI/2);
     }
-    if (moveRight) {
+    if (movement.moveRight) {
         camera.position.x -= moveSpeed * Math.sin(camera.rotation.y + Math.PI/2);
         camera.position.z -= moveSpeed * Math.cos(camera.rotation.y + Math.PI/2);
     }
@@ -147,29 +173,44 @@ let isCursorLocked = false;
 	let mouseX = 0;
 	let mouseY = 0;
 
+
 function onDocumentMouseMove(event) {
 	if(isCursorLocked){
 
-	mouseX = event.clientX;
-	mouseY = event.clientY;
-
-	const maxVerticalRotation = Math.PI / 5;
-	const minVerticalRotation = -Math.PI / 5;
-	//const maxHorizontalRotation = Math.PI;
-	//const minHorizontalRotation = -Math.PI;
+		if (document.pointerLockElement === document.body) {
+			// Si se tiene acceso al cursor, actualiza la posición
+			mouseX += event.movementX/100;
+			mouseY += event.movementY/100;
+		
+		  }
+	const maxVerticalRotation = Math.PI/8;
+	const minVerticalRotation = -Math.PI/8;
+	const maxHorizontalRotation = Math.PI;
+	const minHorizontalRotation = -Math.PI;
 	
   
 	camera.rotation.y += -(mouseX - lastMouseX);
-	camera.rotation.x += -(mouseY - lastMouseY);
+
+	if (camera.rotation.y > -1 && camera.rotation.y < 1) {
+		camera.rotation.x += -(mouseY - lastMouseY);
+	} else if ((camera.rotation.y < -1 && camera.rotation.y > -4) || (camera.rotation.y > 1 && camera.rotation.y < 4)) {
+		camera.rotation.x += (mouseY - lastMouseY);
+	}
   
 	// Limit vertical rotation
 	camera.rotation.x = Math.max(minVerticalRotation, Math.min(maxVerticalRotation, camera.rotation.x));
   
 	// Limit horizontal rotation
-	//camera.rotation.y = Math.max(minHorizontalRotation, Math.min(maxHorizontalRotation, camera.rotation.y));
-  
+	camera.rotation.y = Math.max(minHorizontalRotation, Math.min(maxHorizontalRotation, camera.rotation.y));
+  	if (camera.rotation.y == maxHorizontalRotation) {
+		camera.rotation.y = minHorizontalRotation
+	} else if (camera.rotation.y == minHorizontalRotation){
+		camera.rotation.y = maxHorizontalRotation
+	}
+	
 	lastMouseX = mouseX;
 	lastMouseY = mouseY;
+	
 	}
   }
 
@@ -177,6 +218,7 @@ function onDocumentMouseMove(event) {
   let lastMouseY = 0;
 	
   camera.lookAt(scene.position);
+  camera.position.set( -3, 30, 100);
 
 
   // bloquear el cursor dentro de un área específica
@@ -192,20 +234,7 @@ function lockCursor() {
 	 document.exitPointerLock();
 	  isCursorLocked = false;
   }
-  /*
-  function updateMousePosition(event) {
-	// Verifica si el cursor está dentro de la ventana
-	if (document.pointerLockElement === document.body) {
-	  // Si se tiene acceso al cursor, actualiza la posición
-	  mouseX += event.movementX;
-	  mouseY += event.movementY;
-  
-	  // Limita la posición del mouse a los bordes de la ventana
-	  mouseX = Math.max(Math.min(mouseX, window.innerWidth), 0);
-	  mouseY = Math.max(Math.min(mouseY, window.innerHeight), 0);
-	}
-  }
-*/
+
   document.body.addEventListener('click', lockCursor);
   
   // desactivar la restricción del cursor al presionar escape
@@ -222,11 +251,9 @@ function lockCursor() {
 function animate() {
 	requestAnimationFrame( animate );
 
-	// required if controls.enableDamping or controls.autoRotate are set to true
-	//updateMousePosition();
 	updatePosition();
-	console.log(camera.rotation);
+	console.log(camera.rotation.y)
 	renderer.render( scene, camera );
 };
 
-animate();aw
+animate();
