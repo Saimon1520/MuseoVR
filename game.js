@@ -15,7 +15,7 @@ const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHei
 const size = 100;
 const divisions = 10;
 const color1 = 0x000000;  // negro
-const color2 = 0xffffff;  // blanco
+const color2 = 0xffffff;  // blanco   
 
 const gridHelper = new THREE.GridHelper(size, divisions, color1, color2);
 scene.add(gridHelper);
